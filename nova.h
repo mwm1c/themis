@@ -1292,7 +1292,7 @@ static inline struct nova_inode *nova_get_inode_by_ino_or_pi_addr(struct super_b
 	{
 		if(pi_addr == 0)
 		{
-			printk("nova_get_inode_by_ino_or_pi_addr pi_addr is 0, ino is %lu \n",ino);
+			printk("nova_get_inode_by_ino_or_pi_addr pi_addr is 0, ino is %llu \n",ino);
 			goto WWB_GET;
 		}
 		pi = original_nova_get_inode_by_piaddr(sb, pi_addr);
