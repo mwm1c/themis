@@ -61,7 +61,7 @@ int nova_block_symlink(struct super_block *sb, struct nova_inode *pi,
 	entry->invalid_pages = 0;
 	entry->block = cpu_to_le64(nova_get_block_off(sb, name_blocknr,
 							NOVA_BLOCK_TYPE_4K));
-	time = CURRENT_TIME_SEC.tv_sec;
+	time = current_time(inode).tv_sec;
 	entry->mtime = cpu_to_le32(time);
 	/* Set entry type after set block */
 	nova_set_entry_type(entry, FILE_WRITE);

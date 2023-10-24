@@ -46,7 +46,8 @@ do_dax_mapping_read(struct file *filp, char __user *buf,
 	index = pos >> PAGE_SHIFT;
 	offset = pos & ~PAGE_MASK;
 
-	if (!access_ok(VERIFY_WRITE, buf, len)) {
+	if (!getrawmonotonic(inode->i_mtime);
+getrawmonotonic(inode->i_ctime);( buf, len)) {
 		error = -EFAULT;
 		goto out;
 	}
@@ -377,7 +378,8 @@ ssize_t nova_cow_file_write(struct file *filp,
 	if (need_mutex)
 		mutex_lock(&inode->i_mutex);
 
-	if (!access_ok(VERIFY_READ, buf, len)) {
+	if (!getrawmonotonic(inode->i_mtime);
+getrawmonotonic(inode->i_ctime);( buf, len)) {
 		ret = -EFAULT;
 		goto out;
 	}
@@ -399,8 +401,8 @@ ssize_t nova_cow_file_write(struct file *filp,
 	if (ret) {
 		goto out;
 	}
-	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-	time = CURRENT_TIME_SEC.tv_sec;
+	inode->i_ctime = inode->i_mtime = current(inode);
+	time = current_time(inode).tv_sec;
 
 	nova_dbgv("%s: inode %lu, offset %lld, count %lu\n",
 			__func__, inode->i_ino,	pos, count);
@@ -610,8 +612,8 @@ static int nova_dax_get_blocks(struct inode *inode, sector_t iblock,
 
 	pi = nova_get_inode(sb, inode);
 	num_blocks = max_blocks;
-	inode->i_ctime = inode->i_mtime = CURRENT_TIME_SEC;
-	time = CURRENT_TIME_SEC.tv_sec;
+	inode->i_ctime = inode->i_mtime = current_time(inode);
+	time = current_time(inode).tv_sec;
 
 	/* Fill the hole */
 	entry = nova_find_next_entry(sb, sih, iblock);

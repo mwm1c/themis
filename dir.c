@@ -221,7 +221,7 @@ int nova_append_dir_init_entries(struct super_block *sb,
 	u64 new_block;
 	u64 curr_p;
 	struct nova_dentry *de_entry;
-
+	struct timespec64 now;
 	
 	if (pi->log_head) {
 		nova_dbg("%s: log head exists @ 0x%llx!\n",
@@ -253,7 +253,8 @@ int nova_append_dir_init_entries(struct super_block *sb,
 	de_entry->ino = cpu_to_le64(self_ino);
 	de_entry->name_len = 1;
 	de_entry->de_len = cpu_to_le16(NOVA_DIR_LOG_REC_LEN(1));
-	de_entry->mtime = CURRENT_TIME_SEC.tv_sec;
+	de_entry->mtime = timespec64_trunc(now,
+					 sb->s_time_gran).tv_sec;
 	de_entry->size = sb->s_blocksize;
 	de_entry->links_count = 1;
 	strncpy(de_entry->name, ".\0", 2);
@@ -267,7 +268,8 @@ int nova_append_dir_init_entries(struct super_block *sb,
 	de_entry->ino = cpu_to_le64(parent_ino);
 	de_entry->name_len = 2;
 	de_entry->de_len = cpu_to_le16(NOVA_DIR_LOG_REC_LEN(2));
-	de_entry->mtime = CURRENT_TIME_SEC.tv_sec;
+	de_entry->mtime = timespec64_trunc(now,
+					 sb->s_time_gran).tv_sec;
 	de_entry->size = sb->s_blocksize;
 	de_entry->links_count = 2;
 	strncpy(de_entry->name, "..\0", 3);
@@ -317,7 +319,7 @@ int nova_add_dentry(struct dentry *dentry, u64 ino, int inc_link,
 	 * completion of syscall, but too many callers depend
 	 * on this.
 	 */
-	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
+	dir->i_mtime = dir->i_ctime = current_time(dir);
 
 	loglen = NOVA_DIR_LOG_REC_LEN(namelen);
 	curr_entry = nova_append_dir_inode_entry(sb, pidir, dir, ino,
@@ -354,7 +356,7 @@ int nova_remove_dentry(struct dentry *dentry, int dec_link, u64 tail,
 
 	pidir = nova_get_inode(sb, dir);
 
-	dir->i_mtime = dir->i_ctime = CURRENT_TIME_SEC;
+	dir->i_mtime = dir->i_ctime = current_time(dir);
 
 	loglen = NOVA_DIR_LOG_REC_LEN(entry->len);
 	curr_entry = nova_append_dir_inode_entry(sb, pidir, dir, 0,

@@ -1238,7 +1238,7 @@ static inline struct nova_inode *nova_get_inode(struct super_block *sb,
 		pi = original_nova_get_inode(sb, inode);
 		if(inode->i_ino != pi->nova_ino)
 		{
-			printk("nova_get_inode fatel error original get ino is %llu , pi->nova_ino is %llu \n", \
+			printk("nova_get_inode fatel error original get ino is %lu , pi->nova_ino is %llu \n", \
 				inode->i_ino, pi->nova_ino);
 		}
 		return pi;
@@ -1316,7 +1316,7 @@ static inline struct nova_inode *nova_get_inode_by_ino_or_pi_addr(struct super_b
 WWB_GET:
 	ret = nova_get_inode_address(sb, ino, &piaddr, 0);
 	if (ret) {
-		printk("WWB: get inode address error ino is %d \n",ino);
+		printk("WWB: get inode address error ino is %lld \n",ino);
 		if (retried >= 3)
 			return NULL;
 		retried++;

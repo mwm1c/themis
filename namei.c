@@ -428,7 +428,7 @@ static int nova_link(struct dentry *dest_dentry, struct inode *dir,
 		goto out;
 	}
 
-	inode->i_ctime = CURRENT_TIME_SEC;
+	inode->i_ctime = current_time(inode);
 	inc_nlink(inode);
 
 	err = nova_append_link_change_entry(sb, pi, inode, 0, &pi_tail);
