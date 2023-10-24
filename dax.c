@@ -1067,41 +1067,77 @@ static int nova_dax_file_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 }
 #endif
 
-static int nova_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+// static int nova_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
+// {
+// 	struct inode *inode = file_inode(vma->vm_file);
+// 	int ret = 0;
+// 	timing_t fault_time;
+
+// 	NOVA_START_TIMING(mmap_fault_t, fault_time);
+
+// 	//mutex_lock(&inode->i_mutex);
+// 	inode_lock(inode);
+// 	ret = dax_fault(vma, vmf, nova_dax_get_block, NULL);
+// 	//mutex_unlock(&inode->i_mutex);
+// 	inode_unlock(inode);
+
+// 	NOVA_END_TIMING(mmap_fault_t, fault_time);
+// 	return ret;
+// }
+static vm_fault_t nova_dax_huge_fault(struct vm_fault *vmf,
+			      enum page_entry_size pe_size)   //from 5.x copy 
 {
-	struct inode *inode = file_inode(vma->vm_file);
-	int ret = 0;
-	timing_t fault_time;
+	vm_fault_t ret;
+	int error = 0;
+	pfn_t pfn;
+	INIT_TIMING(fault_time);
+	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
+	struct inode *inode = mapping->host;
 
-	NOVA_START_TIMING(mmap_fault_t, fault_time);
+	NOVA_START_TIMING(pmd_fault_t, fault_time);
 
-	//mutex_lock(&inode->i_mutex);
-	inode_lock(inode);
-	ret = dax_fault(vma, vmf, nova_dax_get_block, NULL);
-	//mutex_unlock(&inode->i_mutex);
-	inode_unlock(inode);
+	nova_dbgv("%s: inode %lu, pgoff %lu\n",
+		  __func__, inode->i_ino, vmf->pgoff);
 
-	NOVA_END_TIMING(mmap_fault_t, fault_time);
+	if (vmf->flags & FAULT_FLAG_WRITE)
+		file_update_time(vmf->vma->vm_file);  //�����ļ���ʱ����Ϣ
+
+	ret = dax_iomap_fault(vmf, pe_size, &pfn, &error, &nova_iomap_ops_lock);   //TODO
+
+	NOVA_END_TIMING(pmd_fault_t, fault_time);
 	return ret;
 }
 
-static int nova_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
-	pmd_t *pmd, unsigned int flags)
-{
-	struct inode *inode = file_inode(vma->vm_file);
-	int ret = 0;
-	timing_t fault_time;
 
-	NOVA_START_TIMING(mmap_fault_t, fault_time);
+static int nova_dax_fault(struct vm_fault *vmf){
+	struct address_space *mapping = vmf->vma->vm_file->f_mapping;
+	struct inode *inode = mapping->host;
 
-	//mutex_lock(&inode->i_mutex);
-	inode_lock(inode);
-	ret = dax_pmd_fault(vma, addr, pmd, flags, nova_dax_get_block, NULL);
-	//mutex_unlock(&inode->i_mutex);
-	inode_unlock(inode);
-	NOVA_END_TIMING(mmap_fault_t, fault_time);
-	return ret;
+	nova_dbgv("%s: inode %lu, pgoff %lu, flags 0x%x\n",
+		  __func__, inode->i_ino, vmf->pgoff, vmf->flags);
+
+	return nova_dax_huge_fault(vmf, PE_SIZE_PTE);
 }
+
+
+
+// static int nova_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
+// 	pmd_t *pmd, unsigned int flags)
+// {
+// 	struct inode *inode = file_inode(vma->vm_file);
+// 	int ret = 0;
+// 	timing_t fault_time;
+
+// 	NOVA_START_TIMING(mmap_fault_t, fault_time);
+
+// 	//mutex_lock(&inode->i_mutex);
+// 	inode_lock(inode);
+// 	ret = dax_pmd_fault(vma, addr, pmd, flags, nova_dax_get_block, NULL);
+// 	//mutex_unlock(&inode->i_mutex);
+// 	inode_unlock(inode);
+// 	NOVA_END_TIMING(mmap_fault_t, fault_time);
+// 	return ret;
+// }
 
 static int nova_dax_pfn_mkwrite(struct vm_area_struct *vma,
 	struct vm_fault *vmf)
@@ -1129,9 +1165,13 @@ static int nova_dax_pfn_mkwrite(struct vm_area_struct *vma,
 
 static const struct vm_operations_struct nova_dax_vm_ops = {
 	.fault	= nova_dax_fault,
-	.pmd_fault = nova_dax_pmd_fault,
+	//.pmd_fault = nova_dax_pmd_fault  //这个接口5.x中没有，被移除了。
 	.page_mkwrite = nova_dax_fault,
 	.pfn_mkwrite = nova_dax_pfn_mkwrite,
+
+	.huge_fault = nova_dax_huge_fault,  //TODO
+	.open = nova_vma_open,//TODO
+	.cloase = nova_vma_cloae,//TODO
 };
 
 int nova_dax_file_mmap(struct file *file, struct vm_area_struct *vma)
