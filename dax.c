@@ -46,8 +46,7 @@ do_dax_mapping_read(struct file *filp, char __user *buf,
 	index = pos >> PAGE_SHIFT;
 	offset = pos & ~PAGE_MASK;
 
-	if (!getrawmonotonic(inode->i_mtime);
-getrawmonotonic(inode->i_ctime);( buf, len)) {
+	if (!access_ok( buf, len)) {
 		error = -EFAULT;
 		goto out;
 	}
@@ -376,10 +375,9 @@ ssize_t nova_cow_file_write(struct file *filp,
 
 	sb_start_write(inode->i_sb);
 	if (need_mutex)
-		mutex_lock(&inode->i_mutex);
+		inode_lock(inode);
 
-	if (!getrawmonotonic(inode->i_mtime);
-getrawmonotonic(inode->i_ctime);( buf, len)) {
+	if (access_ok( buf, len)) {
 		ret = -EFAULT;
 		goto out;
 	}
@@ -401,7 +399,7 @@ getrawmonotonic(inode->i_ctime);( buf, len)) {
 	if (ret) {
 		goto out;
 	}
-	inode->i_ctime = inode->i_mtime = current(inode);
+	inode->i_ctime = inode->i_mtime = current_time(inode);
 	time = current_time(inode).tv_sec;
 
 	nova_dbgv("%s: inode %lu, offset %lld, count %lu\n",
@@ -540,7 +538,8 @@ out:
 						begin_tail, temp_tail);
 
 	if (need_mutex)
-		mutex_unlock(&inode->i_mutex);
+		// mutex_unlock(&inode->i_mutex);
+		inode_unlock(inode);
 	sb_end_write(inode->i_sb);
 	NOVA_END_TIMING(cow_write_t, cow_write_time);
 	NOVA_STATS_ADD(cow_write_bytes, written);
@@ -1076,9 +1075,11 @@ static int nova_dax_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 
 	NOVA_START_TIMING(mmap_fault_t, fault_time);
 
-	mutex_lock(&inode->i_mutex);
+	//mutex_lock(&inode->i_mutex);
+	inode_lock(inode);
 	ret = dax_fault(vma, vmf, nova_dax_get_block, NULL);
-	mutex_unlock(&inode->i_mutex);
+	//mutex_unlock(&inode->i_mutex);
+	inode_unlock(inode);
 
 	NOVA_END_TIMING(mmap_fault_t, fault_time);
 	return ret;
@@ -1093,10 +1094,11 @@ static int nova_dax_pmd_fault(struct vm_area_struct *vma, unsigned long addr,
 
 	NOVA_START_TIMING(mmap_fault_t, fault_time);
 
-	mutex_lock(&inode->i_mutex);
+	//mutex_lock(&inode->i_mutex);
+	inode_lock(inode);
 	ret = dax_pmd_fault(vma, addr, pmd, flags, nova_dax_get_block, NULL);
-	mutex_unlock(&inode->i_mutex);
-
+	//mutex_unlock(&inode->i_mutex);
+	inode_unlock(inode);
 	NOVA_END_TIMING(mmap_fault_t, fault_time);
 	return ret;
 }
@@ -1111,13 +1113,15 @@ static int nova_dax_pfn_mkwrite(struct vm_area_struct *vma,
 
 	NOVA_START_TIMING(mmap_fault_t, fault_time);
 
-	mutex_lock(&inode->i_mutex);
+	//mutex_lock(&inode->i_mutex);
+	inode_lock(inode);
 	size = (i_size_read(inode) + PAGE_SIZE - 1) >> PAGE_SHIFT;
 	if (vmf->pgoff >= size)
 		ret = VM_FAULT_SIGBUS;
 	else
 		ret = dax_pfn_mkwrite(vma, vmf);
-	mutex_unlock(&inode->i_mutex);
+	//mutex_unlock(&inode->i_mutex);
+	inode_unlock(inode);
 
 	NOVA_END_TIMING(mmap_fault_t, fault_time);
 	return ret;
